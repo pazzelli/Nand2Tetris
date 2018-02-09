@@ -1,0 +1,676 @@
+/* TicTacToeGame.jack, released under the BSD 2-Clause License, also known as Simplified BSD or FreeBSD License" 
+ * Copyright (c) 2013, John Pazzelli 
+ * All rights reserved. 
+ * The TicTacToeGame class presents the user with the main menu to select game options and controls the game play + computer AI
+ * 
+ * Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met: 
+ * 
+ * Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer. 
+ * Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution. 
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
+ * 
+ * 
+*/
+class TicTacToeGame {
+	// Class members
+	// Difficulties: 0 = Easy, 1 = Hard, 2 = Impossible
+	field int intDifficulty, intPlayerCount;
+	field int intPlayerXWins, intPlayerOWins;
+	field int intRandomSeed;	// To see the random number generator
+	field TicTacToeBoard board;
+	
+	constructor TicTacToeGame new() {
+		let intPlayerCount = 1;
+		let intDifficulty = 1;
+		let intPlayerXWins = 0;
+		let intPlayerOWins = 0;
+		let intRandomSeed = 0;
+
+		return this;
+	}
+
+	method void dispose() {
+		do Memory.deAlloc(this);
+		return;
+	}
+
+	/**
+	 * Run method endlessly displays the menu and then runs the game
+	 */
+	method void run() {
+		while (true) {
+			// Draw menu screen and wait for user to set game options
+			do drawMenu();
+
+			// Begin game
+			do playGame();
+		}
+		return;
+	}
+
+	/** 
+	 * Draws the menu screen and allows the user to select game options
+	 */
+	method void drawMenu() {
+		var String strText;
+		var char cInput;
+		
+		// Clear screen and set drawing color
+		do Screen.clearScreen();
+		do Screen.setColor(true);
+
+		// Write title
+		let strText = "Tic Tac Toe";
+		do Output.moveCursor(2, HelperFunctions.getCenteredColumnIndex(strText));
+		do Output.printString(strText);
+		do Screen.drawLine(203, 35, 300, 35);
+		let strText = "By: John Pazzelli";
+		do Output.moveCursor(4, HelperFunctions.getCenteredColumnIndex(strText));
+		do Output.printString(strText);
+		
+		// X images
+		do Screen.drawLine(80, 72, 160, 142);
+		do Screen.drawLine(160, 72, 80, 142);
+
+		do Screen.drawLine(260, 72, 340, 142);
+		do Screen.drawLine(340, 72, 260, 142);
+
+		// O images
+		do Screen.drawCircle(210, 107, 40);
+		do Screen.drawCircle(390, 107, 40);
+		do Screen.setColor(false);
+		do Screen.drawCircle(210, 107, 39);
+		do Screen.drawCircle(390, 107, 39);
+		do Screen.setColor(true);
+
+		let cInput = 0;
+		while (~(cInput = 128)) {
+			do drawMenuOptionLists();
+
+			// Wait for input
+			// Increment the random seed while waiting so it will vary with each program execution
+			let cInput = 0;
+			while (cInput = 0) {
+				let cInput = Keyboard.keyPressed();
+				let intRandomSeed = intRandomSeed + 1;
+			}
+
+			// 1
+			if (cInput = 49) {
+				let intPlayerCount = 1;
+			}
+			// 2
+			if (cInput = 50) {
+				let intPlayerCount = 2;
+			}
+			// A
+			if (cInput = 65) {
+				let intDifficulty = 0;
+			}
+			// B
+			if (cInput = 66) {
+				let intDifficulty = 1;
+			}
+			// C
+			if (cInput = 67) {
+				let intDifficulty = 2;
+			}
+			// Q
+			if (cInput = 81) {
+				do Screen.clearScreen();
+				do Sys.halt();
+			}
+			
+			// Erase select area of screen for redraw
+			do Screen.setColor(false);
+			do Screen.drawRectangle(0, 170, 511, 210);
+		}
+
+		// Seed the PRNG for the game AI
+		do LCGRandom.setSeed(intRandomSeed);
+
+		return;
+	}
+
+	/** 
+	 * Draws the left and right option menus on the main menu screen
+	 */
+	method void drawMenuOptionLists() {
+		var String strText;
+		var int intLeftMenuOffset, intRightMenuOffset;
+
+		do Screen.setColor(true);
+
+		// Write left menu
+		if (intPlayerCount = 1) {
+			let intLeftMenuOffset = 13;
+			do Output.moveCursor(16, intLeftMenuOffset - 1);
+			do Output.printString("[1 - 1 Player Game]");
+			do Output.moveCursor(17, intLeftMenuOffset);
+			do Output.printString("2 - 2 Player Game");
+		}
+		else {
+			let intLeftMenuOffset = 23;
+			do Output.moveCursor(16, intLeftMenuOffset);
+			do Output.printString("1 - 1 Player Game");
+			do Output.moveCursor(17, intLeftMenuOffset - 1);
+			do Output.printString("[2 - 2 Player Game]");
+		}
+		
+		
+		// Right Menu (difficulty - only visible in 1 player mode)
+		let intRightMenuOffset = 40;
+		// Easy
+		if ((intPlayerCount = 1) & (intDifficulty = 0)) {	
+			do Output.moveCursor(16, intRightMenuOffset - 1);
+			do Output.printString("[A - Easy]");
+			do Output.moveCursor(17, intRightMenuOffset);
+			do Output.printString("B - Hard");
+			do Output.moveCursor(18, intRightMenuOffset);
+			do Output.printString("C - Impossible!");
+		}
+		// Hard
+		if ((intPlayerCount = 1) & (intDifficulty = 1)) {	
+			do Output.moveCursor(16, intRightMenuOffset);
+			do Output.printString("A - Easy");
+			do Output.moveCursor(17, intRightMenuOffset - 1);
+			do Output.printString("[B - Hard]");
+			do Output.moveCursor(18, intRightMenuOffset);
+			do Output.printString("C - Impossible!");
+		}
+		// Impossible
+		if ((intPlayerCount = 1) & (intDifficulty = 2)) {	
+			do Output.moveCursor(16, intRightMenuOffset);
+			do Output.printString("A - Easy");
+			do Output.moveCursor(17, intRightMenuOffset);
+			do Output.printString("B - Hard");
+			do Output.moveCursor(18, intRightMenuOffset - 1);
+			do Output.printString("[C - Impossible!]");
+		}
+
+		let strText = "Enter - Play       Q - Quit";
+		do Output.moveCursor(21, HelperFunctions.getCenteredColumnIndex(strText));
+		do Output.printString(strText);
+
+		return;
+	}
+
+	/** 
+	 * The playGame method controls the gameplay
+	 */
+	method void playGame() {
+		var char cInput;
+		var int intPlayerTurn, intCellIndex;
+		var bool blnWinnerFound, blnDrawGame;
+		var string strText;
+
+		// Initialize variables
+		let cInput = 0;
+		
+		// Quit on Q key press
+		while (~(cInput = 81)) {
+			let board = TicTacToeBoard.new();
+			let intPlayerTurn = 1;	// X goes first
+			let blnWinnerFound = false;
+			let blnDrawGame = false;
+
+			// Draw all on-screen components
+			do drawGameScreen();
+
+			// Place pieces until winner determined
+			while ((~(cInput = 81)) & (~blnWinnerFound) & (~blnDrawGame)) {
+				// Write input prompt message
+				do drawTurnPrompt(intPlayerTurn, blnWinnerFound, blnDrawGame);
+
+				// Computer will make the next move if it's O's turn and a 1 player game
+				if ((intPlayerTurn = -1) & (intPlayerCount = 1)) {
+					// Computer's turn
+					// Determine cell index of best move and add 49 to adjust value as if entered on the keyboard
+					let cInput = TicTacToeGame.calcBestMove(board, intPlayerTurn, intDifficulty) + 49;
+					do Output.printChar(cInput);
+				}
+				else {
+					// Human player's turn
+					// Wait for input
+					let cInput = Keyboard.readChar();
+				}
+
+				// Place piece if valid cell was selected and no piece already present there
+				if ((cInput > 48) & (cInput < 58)) {
+					let intCellIndex = (cInput - 49);
+			
+					// Ensure no piece currently in this cell
+					if (~((board.getPiece(intCellIndex) = 1) | (board.getPiece(intCellIndex) = -1))) {
+						// Place the piece on the board and draw it
+						do board.placePiece(intPlayerTurn, intCellIndex);
+						do drawPiece(intCellIndex);
+
+						// Did this player just win?
+						if (board.getWinner() = intPlayerTurn) {
+							let blnWinnerFound = true;
+							if (intPlayerTurn = 1) {
+								let intPlayerXWins = intPlayerXWins + 1;
+							}
+							else {
+								let intPlayerOWins = intPlayerOWins + 1;
+							}
+						}
+
+						// Is this a draw game?
+						if ((~blnWinnerFound) & (board.getPiecesPlaced() = 9)) {
+							let blnDrawGame = true;
+						}
+
+						// If neither of these are true, switch turn to next player
+						if ((~blnWinnerFound) & (~blnDrawGame)) {
+							// Switch turn to next player
+							let intPlayerTurn = -intPlayerTurn;
+						}
+					}
+				}
+
+				// Erase the character just entered and loop back to wait for next input
+				do Output.backSpace();
+			}
+
+			if (blnWinnerFound | blnDrawGame) {
+				// Print win or draw message and update the scores
+				if (blnWinnerFound) {
+					do drawScores();
+				}
+				do drawTurnPrompt(intPlayerTurn, blnWinnerFound, blnDrawGame);
+
+				// Wait for key press
+				let cInput = Keyboard.readChar();
+			}
+		
+			// Free memory
+			do board.dispose();
+		}
+
+		return;
+	}
+
+	/** 
+	 * Draws all on-screen components when the game begins
+	 */
+	method void drawGameScreen () {
+		do Screen.clearScreen();
+		do drawScores();
+		do drawBoard();
+		do drawLegend();
+
+		do Output.moveCursor(22, 47);
+		do Output.printString("Press Q to quit");
+
+		return;
+	}
+
+	/** 
+	 * Draws the current player scores in the upper-right corner of the screen
+	 */
+	method void drawScores () {
+		// Erase select area of screen for redraw
+		do Screen.setColor(false);
+		do Screen.drawRectangle(405, 23, 511, 47);
+
+		// Print scores
+		do Screen.setColor(true);
+
+		do Output.moveCursor(2, 50);
+		do Output.printString("Player X: ");
+		do Output.printInt(intPlayerXWins);
+
+		do Output.moveCursor(3, 50);
+		do Output.printString("Player O: ");
+		do Output.printInt(intPlayerOWins);
+
+		return;
+	}
+
+	/** 
+	 * Draws the cell number legend on the right side of the screen
+	 */
+	method void drawLegend() {
+		var int i;
+
+		// Erase select area of screen for redraw
+		do Screen.setColor(false);
+		do Screen.drawRectangle(405, 80, 511, 210);
+
+		do Screen.setColor(true);
+		do Output.moveCursor(7, 53);
+		do Output.printString("Cell #s:");
+
+		// Draw board legend
+		do Screen.drawLine(439, 95, 439, 163);
+		do Screen.drawLine(464, 95, 464, 163);
+		do Screen.drawLine(415, 116, 486, 116);
+		do Screen.drawLine(415, 137, 486, 137);
+
+		let i = 0;
+		while (i < 9) {
+			do Output.moveCursor(9 + (Math.divide(i, 3) * 2), 53 + (HelperFunctions.mod(i, 3) * 3));
+			do Output.printInt(i + 1);
+
+			let i = i + 1;
+		}
+		
+		return;
+	}
+
+	/** 
+	 * Draws the prompt beneath the game board indicating whose turn it is, or who the winner of the game is
+	 */
+	method void drawTurnPrompt(int intPlayerTurn, bool blnWinner, bool blnDrawGame) {
+		var string strText;
+
+		// Erase select area of screen for redraw
+		do Screen.setColor(false);
+		do Screen.drawRectangle(0, 197, 511, 222);
+
+		if (blnWinner | blnDrawGame) {
+			// Print winning player message
+			let strText = "Player X wins!!";
+			if (intPlayerTurn = -1) {
+				let strText = "Player O wins!!";
+			}
+			if (blnDrawGame) {
+				let strText = "Draw game!!";
+			}
+			do Output.moveCursor(18, HelperFunctions.getCenteredColumnIndex(strText));
+			do Output.printString(strText);
+		}
+		else {
+			// Write input prompt
+			do Screen.setColor(true);
+			let strText = "X's turn.";
+			if (intPlayerTurn = -1) {
+				let strText = "O's turn.";
+			}
+			do Output.moveCursor(18, HelperFunctions.getCenteredColumnIndex(strText));
+			do Output.printString(strText);
+
+			let strText = "Enter cell number:";
+			if ((intPlayerTurn = -1) & (intPlayerCount = 1)) {
+				let strText = "Calculating move...";
+			}
+
+			do Output.moveCursor(19, HelperFunctions.getCenteredColumnIndex(strText));
+			do Output.printString(strText);
+		}
+
+		return;
+	}
+
+	/** 
+	 * Draws the main game board in the center of the game screen
+	 */
+	method void drawBoard() {
+		var int i;
+
+		// Erase select area of screen for redraw
+		do Screen.setColor(false);
+		do Screen.drawRectangle(181, 20, 331, 170);
+
+		// Draw board lines
+		do Screen.setColor(true);
+		do Screen.drawLine(231, 20, 231, 170);
+		do Screen.drawLine(281, 20, 281, 170);
+		do Screen.drawLine(181, 70, 331, 70);
+		do Screen.drawLine(181, 120, 331, 120);
+
+		// Draw each piece on the board, if any are present
+		if (board.getPiecesPlaced() > 0) {
+			let i = 0;
+			while (i < 9) {
+				do drawPiece(i);
+				let i = i + 1;
+			}
+		}
+
+		return;
+	}
+
+	/** 
+	 * Draws a piece (X or O) in the indicated cell on the game board in the center of the screen
+	 */
+	method void drawPiece(int intCellIndex) {
+		var int x1, x2, y1, y2;
+		var int intPiece;
+
+		// Retrieve the game piece from the board cell
+		let intPiece = board.getPiece(intCellIndex);
+		if (~((intPiece = 1) | (intPiece = -1))) {
+			return;
+		}
+		
+		do Screen.setColor(true);
+
+		// Determine bounding coordinates for the piece
+		let x1 = 181 + 5 + (HelperFunctions.mod(intCellIndex, 3) * 50);
+		let x2 = x1 + 40;
+		let y1 = 20 + 5 + (Math.divide(intCellIndex, 3) * 50);
+		let y2 = y1 + 40;
+
+		if (intPiece = -1) {
+			// O
+			do Screen.drawCircle(Math.divide(x1 + x2, 2), Math.divide(y1 + y2, 2), 20);
+			do Screen.setColor(false);
+			do Screen.drawCircle(Math.divide(x1 + x2, 2), Math.divide(y1 + y2, 2), 19);
+			do Screen.setColor(true);
+		}
+		else {
+			// X
+			do Screen.drawLine(x1, y1, x2, y2);
+			do Screen.drawLine(x2, y1, x1, y2);
+		}
+		
+		return;
+	}
+
+	/**
+	 * Returns the index of the board cell where the X or O should be placed.
+	 *   board = the current game state
+	 *   intPlayerTurn = current player's turn (X = 1, O = -1)
+	 *   intDifficulty = AI intelligence (0 = Easy, 1 = Hard, 2 = Impossible)
+	 */
+	function int calcBestMove(TicTacToeBoard board, int intPlayerTurn, int intDifficulty) {
+		var int i;
+		var int intFreeSpaceCount, intRandResult;
+		var int intSinglePieceIndex, intDistFromCenter;
+		var int intNewRow, intNewCol;
+
+		// Validate inputs
+		if ((intDifficulty < 0) | (intDifficulty > 2)) {
+			do Sys.error(103);
+		}
+		if (~((intPlayerTurn = -1) | (intPlayerTurn = 1))) {
+			do Sys.error(104);
+		}
+
+		// Easy difficulty - just choose a random cell index and return it
+		if (intDifficulty = 0) {
+			let intFreeSpaceCount = (9 - board.getPiecesPlaced());
+
+			// Get a random number in the range of 0 to the # of free spaces available - 1
+			let intRandResult = LCGRandom.randRange(0, intFreeSpaceCount - 1);
+
+			// Determine which space was chosen from the possible free spaces remaining
+			let i = 8;
+			while (i > -1) {
+				if (board.getPiece(i) = 0) {
+					let intFreeSpaceCount = intFreeSpaceCount - 1;
+					if (intFreeSpaceCount = intRandResult) {
+						return i;
+					}
+				}
+				let i = i - 1;
+			}
+		}
+
+
+		// For Hard or Impossible games, use AI to determine best move
+		// The first computer move can take up to 50s in the VM emulator so use cached results here (first move only) for efficiency
+		if (board.getPiecesPlaced() = 1) {
+			// Find index of single placed piece
+			let i = 0;
+			while (i < 9) {
+				if (board.getPiece(i) = 1) {
+					let intSinglePieceIndex = i;
+				}
+				let i = i + 1;
+			}
+
+			// Player took a corner square
+			let intDistFromCenter = Math.abs(4 - intSinglePieceIndex);	// Indexes' distance from center
+			if ((intDistFromCenter = 2) | (intDistFromCenter = 4)) {
+				// AI always responds with center square
+				return 4;
+			}
+			
+			// Player took the center square, choose any corner at random
+			if (intDistFromCenter = 0) {
+				return ((LCGRandom.randRange(0, 1) * 6) + (LCGRandom.randRange(0, 1) * 2));
+			}
+
+			// Player took non-center, non-corner square
+			// Hard
+			if (intDifficulty = 1) {
+				let intRandResult = LCGRandom.randRange(0, 2);
+				if (intRandResult = 2) {
+					// Choose center tile with 1/3 probability
+					return 4;
+				}
+
+				// Computer piece will be placed in one of the two corners opposite the player's piece
+				let intNewRow = HelperFunctions.mod(Math.divide(intSinglePieceIndex, 3) + 2, 4) + (HelperFunctions.mod(Math.divide(intSinglePieceIndex, 3), 2) * ((2 * intRandResult) - 3));
+				let intNewCol = HelperFunctions.mod(HelperFunctions.mod(intSinglePieceIndex, 3) + 2, 4) + (HelperFunctions.mod(HelperFunctions.mod(intSinglePieceIndex, 3), 2) * ((2 * intRandResult) - 3));
+
+				// Convert row/col coordinates to a single grid index
+				return (intNewRow * 3) + intNewCol;
+			} else {
+				// Get two random numbers, either 0 or 1
+				let intRandResult = LCGRandom.randRange(0, 1);
+				let i = LCGRandom.randRange(0, 1);
+
+				// Computer piece will be placed in any of the four cells in the same row or column as the player's piece
+				let intNewRow = HelperFunctions.mod(Math.divide(intSinglePieceIndex, 3) + (intRandResult * (i + 1)), 3);
+				let intNewCol = HelperFunctions.mod(HelperFunctions.mod(intSinglePieceIndex, 3) + ((1 - intRandResult) * (i + 1)), 3);
+
+				// Convert row/col coordinates to a single grid index
+				return (intNewRow * 3) + intNewCol;
+			}
+		}
+		else {
+			// For any move other than the first, use the min-max search algorithm
+			// This could be used for the first move as well, but it performs unacceptably slowly on the emulated Hack platform
+			return TicTacToeGame.calcBestMoveRecursive(board, intPlayerTurn, intDifficulty);
+		}
+	}
+
+
+	/** 
+	 * Determines the best square to place the input piece into using a depth-first, min-max algorithm
+	 *   board = the current game state
+	 *   intPlayerTurn = current player's turn (X = 1, O = -1)
+	 *   intDifficulty = AI intelligence (0 = Easy, 1 = Hard, 2 = Impossible)
+	 */
+	function int calcBestMoveRecursive(TicTacToeBoard board, int intPlayerTurn, int intDifficulty) {
+		var int i, intFreeSpaceCount;
+		var int intPositionScore, intMoveScore;
+		var int intBestMoveIndex;
+
+		// Initialize variables
+		let intPositionScore = -1;
+		let intBestMoveIndex = -1;
+		let intFreeSpaceCount = (9 - board.getPiecesPlaced());
+		
+		// Loop over all board spaces to find empty ones
+		let i = 0;
+		while (i < 9) {
+			// Locate empty space
+			if (board.getPiece(i) = 0) {
+				let intMoveScore = -1;
+
+				// Test placing piece here temporarily
+				do board.placePiece(intPlayerTurn, i);
+
+				// Is this a winning move?
+				if (board.getWinner() = intPlayerTurn) {
+					// Set score to 100 for O's turn (intPlayerTurn = -1) and 0 for X's turn (intPlayerTurn = 1)
+					// No need to consider any other piece placements at this level of the tree
+					// since it is assumed that any player will always select a winning move if one is immediately available
+					do board.setPositionScore(50 * (1 - intPlayerTurn));
+					do board.removePiece(i);
+					return i;
+				}
+
+				// Is this a draw game?
+				if ((intMoveScore = -1) & ((intFreeSpaceCount - 1) = 0)) {
+					let intMoveScore = 50;
+				}
+
+				// If neither are true, recurse into child nodes, changing turn to next player
+				// Depth-first search is best to keep the recursion depth (and stack space usage) to a minimum
+				if (intMoveScore = -1) {
+					do TicTacToeGame.calcBestMoveRecursive(board, -intPlayerTurn, intDifficulty);
+					let intMoveScore = board.getPositionScore();
+				}
+
+				// Aggregate the child node scores based on game difficulty using min-max algorithm
+				// Use max() for O's turn (computer player), use min() for X's turn if Impossible difficulty or avg() for Hard difficulty
+				if (intPositionScore = -1) {
+					let intPositionScore = intMoveScore;
+					let intBestMoveIndex = i;
+				}
+				else {
+					// O's turn, use max() since the computer will always choose the best option
+					if (intPlayerTurn = -1) {
+						// Update position score only when the new move scores higher than the current best
+						// or if they score equal, select the either one randomly for some variation in gameplay
+						if ((intMoveScore > intPositionScore) | ((intMoveScore = intPositionScore) & (LCGRandom.randRange(0, 1) = 1))) {
+							let intPositionScore = intMoveScore;
+							let intBestMoveIndex = i;
+						}
+					}
+					else {
+						// Use average for Hard difficulty (assume player makes random / sometimes dumb moves)
+						if (intDifficulty = 1) {
+							// Sum the scores for now, divide only once when all spaces have been considered (less rounding error)
+							let intPositionScore = intPositionScore + intMoveScore;
+
+							// Assume X will choose any available move at random
+							if (LCGRandom.randRange(0, intFreeSpaceCount - 1) = 0) {
+								let intBestMoveIndex = i;
+							}
+						}
+						else {
+							// Use min() for Impossible difficulty (assume player chooses best move)
+							// Update position score only when the new move scores lower than the current worst
+							if (intMoveScore < intPositionScore) {
+								let intPositionScore = intMoveScore;
+								let intBestMoveIndex = i;
+							}
+						}
+					}
+				}
+
+				// Now remove it since it was not an actual game move
+				do board.removePiece(i);
+			}
+			let i = i + 1;
+		}
+
+		// Finalize the average calculation if it's X's turn and on Hard difficulty
+		if ((intPlayerTurn = 1) & (intDifficulty = 1)) {
+			let intPositionScore = Math.divide(intPositionScore, intFreeSpaceCount);
+		}
+
+		// Set this board's position score for the caller
+		do board.setPositionScore(intPositionScore);
+
+		// Return the best move index
+		return intBestMoveIndex;
+	}
+}

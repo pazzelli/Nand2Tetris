@@ -1,0 +1,168 @@
+/* TicTacToeBoard.jack, released under the BSD 2-Clause License, also known as Simplified BSD or FreeBSD License" 
+ * Copyright (c) 2013, John Pazzelli 
+ * All rights reserved. 
+ * This software implements a Tic Tac Toe board and associated game logic
+ * 
+ * Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met: 
+ * 
+ * Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer. 
+ * Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution. 
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
+ * 
+ * 
+*/ 
+class TicTacToeBoard {
+	/**
+	 * The board state is an array of 9 cells, each containing one of:
+	 *  0 = no piece placed
+	 * -1 = O
+	 *  1 = X
+	 */
+	field Array arrBoard;
+	field int intWinner, intPiecesPlaced;
+	field int intPositionScore;
+
+	constructor TicTacToeBoard new() {
+		var int i;
+
+		let intWinner = 0;
+		let intPiecesPlaced = 0;
+		let intPositionScore = -1;
+		let arrBoard = Array.new(9);
+		let i = 0;
+		while (i<9) {
+			let arrBoard[i] = 0;
+			let i = i + 1;
+		}
+
+		return this;
+	}
+
+	method void dispose() {
+		do Memory.deAlloc(this);
+		return;
+	}
+
+	method int getWinner() {
+		return intWinner;
+	}
+
+	/**
+	 * Accessor methods for the score of the piece positions on this board.  
+	 * Used by the computer AI in TicTacToeGame.jack
+	 */
+	method void setPositionScore(int intScore) {
+		let intPositionScore = intScore;
+		return;
+	}
+
+	method int getPositionScore() {
+		return intPositionScore;
+	}
+
+	/**
+	 * Places a piece on the board and checks to see if there is a winner
+	 */
+	method void placePiece(int intPiece, int intCell) {
+		// Check if invalid piece 
+		if (~((intPiece = -1) | (intPiece = 1))) {
+			do Sys.error(100);
+		}
+
+		// Check for invalid cell
+		if ((intCell < 0) | (intCell > 8)) {
+			do Sys.error(101);
+		}
+
+		// Check for a piece already having been placed
+		if ((arrBoard[intCell] = 1) | (arrBoard[intCell] = -1)) {
+			do Sys.error(102);
+		}
+
+		// Put the piece on the board
+		let arrBoard[intCell] = intPiece;
+		let intPiecesPlaced = intPiecesPlaced + 1;
+
+		// See if there is a winner
+		do calcWinner();
+
+		return;
+	}
+
+	/**
+	 * Removes a piece from the board - does NOT update the winner status since
+	 * this is only currently used by the computer AI (for improved efficiency)
+	 */
+	method void removePiece(int intCell) {
+		// Check for invalid cell
+		if ((intCell < 0) | (intCell > 8)) {
+			do Sys.error(101);
+		}
+
+		let arrBoard[intCell] = 0;
+		let intPiecesPlaced = intPiecesPlaced - 1;
+
+		// See if there is a winner
+		//do calcWinner();
+
+		return;
+	}
+
+	/**
+	 * Retrieves the piece at the specified cell index
+	 * X = 1,  O = -1
+	 */
+	method int getPiece(int intCell) {
+		// Check for invalid cell
+		if ((intCell < 0) | (intCell > 8)) {
+			do Sys.error(101);
+		}
+
+		return arrBoard[intCell];
+	}
+
+	/**
+	 * Returns the total number of pieces placed on the board
+	 */
+	method int getPiecesPlaced() {
+		return intPiecesPlaced;
+	}
+
+	/**
+	 * Determines if there is a winner by checking all possible lines
+	 * If the sum of any line adds up to -3, O wins.  If 3, X wins
+	 */
+	method void calcWinner() {
+		var int intHLine1, intHLine2, intHLine3;
+		var int intVLine1, intVLine2, intVLine3;
+		var int intDLine1, intDLine2;
+
+		// Assume no winner
+		let intWinner = 0;
+
+		// There can't be a winner unless at least 5 pieces placed (i.e. 3 Xs, 2 Os)
+		if (intPiecesPlaced < 5) {
+			return;
+		}
+
+		// Add piece token values in each line
+		let intHLine1 = arrBoard[0] + arrBoard[1] + arrBoard[2];
+		let intHLine2 = arrBoard[3] + arrBoard[4] + arrBoard[5];
+		let intHLine3 = arrBoard[6] + arrBoard[7] + arrBoard[8];
+		let intVLine1 = arrBoard[0] + arrBoard[3] + arrBoard[6];
+		let intVLine2 = arrBoard[1] + arrBoard[4] + arrBoard[7];
+		let intVLine3 = arrBoard[2] + arrBoard[5] + arrBoard[8];
+		let intDLine1 = arrBoard[0] + arrBoard[4] + arrBoard[8];
+		let intDLine2 = arrBoard[2] + arrBoard[4] + arrBoard[6];
+
+		// Check for X as the winner
+		if ((intHLine1 = 3) | (intHLine2 = 3) | (intHLine3 = 3) | (intVLine1 = 3) | (intVLine2 = 3) | (intVLine3 = 3) | (intDLine1 = 3) | (intDLine2 = 3)) {
+			let intWinner = 1;
+		}
+		if ((intHLine1 = -3) | (intHLine2 = -3) | (intHLine3 = -3) | (intVLine1 = -3) | (intVLine2 = -3) | (intVLine3 = -3) | (intDLine1 = -3) | (intDLine2 = -3)) {
+			let intWinner = -1;
+		}
+
+		return;
+	}
+}
