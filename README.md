@@ -14,6 +14,13 @@ This is an implementation of the classic Tic Tac Toe game on the Hack computer a
 **Draw Game**
 ![alt text](https://github.com/pazzelli/Nand2Tetris/blob/master/Screenshots/DrawGame.png)
 
+## Code
+The main **challenges** in writing the code were finding a way to **support randomness** (required by the computer AI when selecting a move) and implementation of the **minimax gameplay algorithm**.  
+
+Pseudo-randomness was achieved by manually implementing a **Linear Congruential Generator (LCG)** that is seeded with a value that is continuously incremented while the game is waiting on the home screen for the user to begin playing.  This seeding strategy ensures a **different seed will be selected from game-to-game** with high likelihood.  The code for the LCG is found in [LCGRandom.jack](https://github.com/pazzelli/Nand2Tetris/blob/master/Code/LCGRandom.jack).  
+
+The code for the [minimax algorithm](https://en.wikipedia.org/wiki/Minimax) is found in [TicTacToeGame.jack](https://github.com/pazzelli/Nand2Tetris/blob/master/Code/TicTacToeGame.jack) in the functions **calcBestMove()** and **calcBestMoveRecursive()**.  Note that calcBestMove() could simply call calcBestMoveRecursive() for all cases, however in the case where it is the computer's turn to move and there are 8 empty spaces, **it can take up to 50s for the minimax algorithm to compute all 8! = 40,320 possible outcomes** due to the fact that both the virtual machine and all the computer hardware are being **emulated**.  To overcome this, I added some code in calcBestMove() that **randomly selects from a cache of the best moves** chosen by the algorithm in this case and the **AI is now able to calculate and select its best move in under 1s** for all cases, even under emulation.
+
 ## Instructions
 1. Download the [Nand2Tetris software suite](http://www.nand2tetris.org/software.php) and follow the setup instructions.
 
